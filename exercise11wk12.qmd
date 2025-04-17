@@ -1,0 +1,223 @@
+---
+title: "exercise 11 week 12"
+format: html
+editor: visual
+---
+
+Prior to working with the "Mammal Life Histories" dataset I loaded in some libraries necessary for later processes. I also ran `skim()` to check for categorical and numeric variables. I found 4 categorical variables - **Order, Family, Genus,** and **Species** - and 10 numeric variables - **Mass, Gestation, Newborn Mass, Weaning, Mass at End of Weaning, Age at First Reproduction, Max Lifespan, Litter Size, Litters per Year,** and **refs.**
+
+``` R
+library(tidyverse)
+library(skimr)
+library(naniar)
+library(ggplot2)
+library(MuMIn)
+m <- read_tsv("https://raw.githubusercontent.com/difiore/ada-datasets/main/Mammal_lifehistories_v2.txt", col_names = TRUE)
+skim(m) 
+#categorical include: order, family, genus, species 
+#numeric include: mass, gestation, newborn, weaning, wean mass, AFR, max. life, litter size, litters/year, refs
+```
+
+# Step One
+
+First matter of business is to replace all of the -999 cells with N/A, as -999 was used as the code for not applicable. This was done with the `replace_with_no_all()` function from the `:naniar:` package.
+
+``` R
+m <- m |> replace_with_na_all(condition = ~.x == -999)
+```
+
+# Step Two
+
+Secondly, I used the `select()` function to get rid of the **litter size** and **refs** numeric variables.
+
+I also changed the names of the columns to make them easier to reference using base R functions.
+
+``` R
+m <- m |> select(-"litter size", -"refs")
+#also renaming the variables so I don't lose it
+names(m)[names(m) == 'mass(g)'] <- 'mass'
+names(m)[names(m) == 'gestation(mo)'] <- 'gestation'
+names(m)[names(m) == 'newborn(g)'] <- 'newborn'
+names(m)[names(m) == 'wean mass(g)'] <- 'wean_mass'
+names(m)[names(m) == 'weaning(mo)'] <- 'weaning'
+names(m)[names(m) == 'AFR(mo)'] <- 'AFR'
+names(m)[names(m) == 'max. life(mo)'] <- 'max_life'
+names(m)[names(m) == 'litters/year'] <- 'LPY'
+```
+
+# Step Three
+
+Thirdly, I added in new variables that were the log-transformed versions of **Mass**, **Gestation, Newborn Mass, Weaning, Mass at End of Weaning, AFR, Maximum Lifespan,** and **Litters per year**. This way the data is normalized for visualizing and model development used for later work.
+
+``` R
+m <- m |> 
+  mutate(logMass = log(mass),
+  logGest = log(gestation),
+  logNBmass = log(newborn),
+  logWeaning = log(weaning),
+  logWeanMass = log(wean_mass),
+  logAFR = log(AFR),
+  logMaxLife = log(max_life),
+  logLPY = log(LPY)
+)
+```
+
+# Step Four
+
+Fourthly, I needed to create models compare the logged **Mass** variable against logged **Gestation time, Weaning, Weaning Mass,** and **Max Lifespan**. Each linear model was then used to get the residuals and add them to the data frame.
+
+``` R
+##age
+#mass by gestation
+md1 <- lm(logGest ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resGest = residuals(md1))
+#mass by weaning
+md2 <- lm(logWeaning ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resWeaning = residuals(md2))
+#mass by age at first repro
+md3 <- lm(logAFR ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resAFR = residuals(md3))
+#mass by max lifespan
+md4 <- lm(logMaxLife ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resMax_Life = residuals(md4))
+```
+
+I then repeated that process with the logged **Mass** variable against logged **Newborn mass** and **Mass at End of Weaning**. The residuals were also added to the data frame
+
+``` R
+##mass
+#mass by newborn
+md5 <- lm(logNBmass ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resNBmass = residuals(md5))
+#mass by wean mass
+md6 <- lm(logWeanMass ~ logMass, data = m, na.action = na.exclude)
+m <- m |> mutate(resWeanMass = residuals(md6))
+```
+
+# Step Five
+
+Once the residuals have been added to the data frame I can plot the residuals for **logged Maximum Lifespan \~ logged Mass** across **Order**. As well as, the residuals for **logged Newborn mass \~ logged Mass** across **Order** and the residuals of **logged Weaning Mass \~ logged Mass** across **Order.**
+
+### *Maximum Lifespan by Order*
+
+![](step5.1)
+
+This plot suggests that the mammalian orders with the longest residual maximum lifespan are *Primates*, *Scandentia*, and *Xenarthra.* These orders have the highest interquartile ranges and significantly higher means than other groups. Although *Carnivora* has significant tails.
+
+``` R
+(p1 <- ggplot(data = m, mapping = aes(x=order, y=resMax_Life)) +
+  geom_boxplot())
+##plot indicates that primates, scandentia, and xenarthra have the highest residual lifespan
+```
+
+### *Newborn Mass by Order*
+
+![](step5.2)
+
+This plot is significantly more even, suggesting that each mammalian order has roughly similar residual mass at birth. *Macroscelidae* has a high mean but a small interquartile range. Other orders, like *Cetacea,* have significant tails (which makes sense since those are whales).
+
+``` R
+(p2 <- ggplot(data = m, mapping = aes(x=order, y=resNBmass)) +
+    geom_boxplot())
+##plot is a lot more even but macroscelidae looks to be the highest on average
+##although other groups have higher tails or outliers I believe the average and inter-quartile range is more telling
+```
+
+### *Weaning Mass by Order*
+
+![](step5.3)
+
+The final plot shows more difference in the mass of various mammalian orders when they finish weaning. *Perissodactyla* has the highest interquartile range with *Carnivora, Cetacea, Primates,* and *Lagamorpha* as significant runner-ups with large tails and high interquartile ranges.
+
+``` R
+(p3 <- ggplot(data = m, mapping = aes(x=order, y=resWeanMass)) +
+    geom_boxplot())
+##plot suggests that perissodactyla is the beefiest at weaning age
+##cetacea is pretty much next but carnivora, primates and lagamorpha have big tails
+```
+
+# Step Six
+
+Using the `dredge()` function to get the delta AICc scores, I was able to compare various models for logged **Maximum Lifespan** and logged **Age at First Reproduction.**
+
+Beforehand, I did need to sort out any cells that had N/A in the comparative variables. I repeated this process individually to create new subsetted data frames by removing N/As for the predictor variables.
+
+``` R
+m <- m |> drop_na(logGest, logNBmass, logWeaning, logWeanMass, logLPY, logMass)
+```
+
+### *Maximum Lifespan* 
+
+Creating a full model with the `lm()` function comparing **logged Maximum Lifespan** with **logged Gestation, Newborn Mass, Weaning, Wean Mass, Mass,** and **Litters per Year**. The `dredge()` function then created the `mods1` object that produced a full list of all possible combinations of variables.
+
+The most successful model, with a delta AICc score of 0.00 is model 24 which compares **logMaxLife** with **logGest, logLPY, logMass** and **logWeaning**. The next most successful models (with delta AICc scores beneath 4.0) where model 32, 56, 64, and 52
+
+-   *Model 32 =* logMaxLife \~ logGest + logNBmass + logWeaning + logLPY + logMass
+
+-   *Model 56* = logMaxLife \~ logGest + logWeaning + logWeanMass + logLPY + logMass
+
+-   *Model 64* = logMaxLife \~ logGest + logNBmass + logWeaning + logLPY + logMass + logWeanMass
+
+-   *Model 52 =* logMaxLife \~ logGest + logWeaning + logLPY  + logWeanMass
+
+``` R
+#testing max.life
+m2 <- m |> drop_na(logMaxLife)
+maxfull <- lm(data = m2, logMaxLife ~ logGest + logNBmass + logWeaning + logWeanMass + logLPY + logMass, na.action = "na.fail")
+(mods1 <- dredge(maxfull)) 
+##model with logGest, logLPY, logMass, and logWeaning is best (a.k.a model 24)
+##there are 5 models beneath 4 (model 24, 32 (everything but wean mass), 56 (everything but newborn mass), 64 (everything), 52 (exclude mass and newborn mass))
+```
+
+I then plotted the model-averaged coefficients and the confidence intervals that surround them.
+
+![](step6.1)
+
+``` R
+max.avg <- summary(model.avg(mods1, subset = delta <= 4, fit = TRUE))
+confint(max.avg)
+plot(max.avg)
+```
+
+### *Age at First Reproduction* 
+
+Creating a full model with the `lm()` function comparing **logged Age at First Reproduction** with **logged Gestation, Newborn Mass, Weaning, Wean Mass, Mass,** and **Litters per Year**. The `dredge()` function then created the `mods2` object that produced a full list of all possible combinations of variables.
+
+The most successful model, with a delta AICc score of 0.00 is model 24 which compares **logAFR** with **logGest, logLPY, logMass** and **logWeaning**. The next most successful models (with delta AICc scores beneath 4.0) where model 42, 32, 56, 60, 28, and 64
+
+-   *Model 42 =* logAFR \~ logGest + logWeaning + logLPY + logWeanMass
+
+-   *Model 32* = logAFR \~ logGest + logNBmass + logWeaning + logLPY + logMass
+
+-   *Model 56 =* logAFR \~ logGest + logWeaning + logLPY + logMass + logWeanMass
+
+-   *Model 60 =* logAFR \~ logGest + logNBmass + logWeaning + logLPY + logWeanMass
+
+-   *Model 28 =* logAFR \~ logGest + logNBmass + logWeaning + logLPY
+
+-   *Model 64* = logAFR \~ logGest + logNBmass + logWeaning + logLPY + logMass + logWeanMass
+
+``` R
+m3 <- m |> drop_na(logAFR)
+afrfull <- lm(data = m3, logAFR ~ logGest + logNBmass + logWeaning + logWeanMass + logLPY + logMass, na.action = "na.fail")
+(mods2 <- dredge(afrfull)) 
+##model with logGest, logLPY, logMass, and logWeaning is best (a.k.a model 24)
+##there are 7 models beneath delta = 4 
+  ##model 24, 
+  ##model 42 (excluding logmass and lognewborn)
+  ##model 32 (everything but logweaning mass)
+  ##model 56 (everything but lognewbonr)
+  ##model 60 (everything but logmass)
+  ##model 28 (excluding logmass and logweaning mass)
+  ##model 64 (everything)
+```
+
+I then plotted the model-averaged coefficients and the confidence intervals that surround them.
+
+![](step6.2)
+
+``` R
+afr.avg <- summary(model.avg(mods2, subset = delta <= 4, fit = TRUE))
+confint(afr.avg)
+plot(afr.avg)
+```
