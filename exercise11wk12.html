@@ -171,7 +171,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="maximum-lifespan-by-order" class="level3">
 <h3 class="anchored" data-anchor-id="maximum-lifespan-by-order"><em>Maximum Lifespan by Order</em></h3>
 <p><img src="step5.1" class="img-fluid"></p>
-<p>This plot suggests that the mammalian orders with the longest residual maximum lifespan are <em>Primates</em>, <em>Scandentia</em>, and <em>Xenarthra.</em> These orders have the highest interquartile ranges and significantly higher means than other groups. Although <em>Carnivora</em> has significant tails.</p>
+<p>This plot suggests that the mammalian orders with the longest residual maximum lifespan are <em>Primates</em>, <em>Scandentia</em>, and <em>Xenarthra.</em> These orders have the highest interquartile ranges and significantly higher medians than other groups. Although <em>Carnivora</em> has significant tails.</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>(p1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data =</span> m, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">x=</span>order, <span class="at">y=</span>resMax_Life)) <span class="sc">+</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>())</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="do">##plot indicates that primates, scandentia, and xenarthra have the highest residual lifespan</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -179,7 +179,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="newborn-mass-by-order" class="level3">
 <h3 class="anchored" data-anchor-id="newborn-mass-by-order"><em>Newborn Mass by Order</em></h3>
 <p><img src="step5.2" class="img-fluid"></p>
-<p>This plot is significantly more even, suggesting that each mammalian order has roughly similar residual mass at birth. <em>Macroscelidae</em> has a high mean but a small interquartile range. Other orders, like <em>Cetacea,</em> have significant tails (which makes sense since those are whales).</p>
+<p>This plot is significantly more even, suggesting that each mammalian order has roughly similar residual mass at birth. <em>Macroscelidae</em> has a high median but a small interquartile range. Other orders, like <em>Cetacea,</em> have significant tails (which makes sense since those are whales).</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>(p2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data =</span> m, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">x=</span>order, <span class="at">y=</span>resNBmass)) <span class="sc">+</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_boxplot</span>())</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="do">##plot is a lot more even but macroscelidae looks to be the highest on average</span></span>

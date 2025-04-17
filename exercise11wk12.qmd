@@ -6,7 +6,7 @@ editor: visual
 
 Prior to working with the "Mammal Life Histories" dataset I loaded in some libraries necessary for later processes. I also ran `skim()` to check for categorical and numeric variables. I found 4 categorical variables - **Order, Family, Genus,** and **Species** - and 10 numeric variables - **Mass, Gestation, Newborn Mass, Weaning, Mass at End of Weaning, Age at First Reproduction, Max Lifespan, Litter Size, Litters per Year,** and **refs.**
 
-``` R
+``` r
 library(tidyverse)
 library(skimr)
 library(naniar)
@@ -22,7 +22,7 @@ skim(m)
 
 First matter of business is to replace all of the -999 cells with N/A, as -999 was used as the code for not applicable. This was done with the `replace_with_no_all()` function from the `:naniar:` package.
 
-``` R
+``` r
 m <- m |> replace_with_na_all(condition = ~.x == -999)
 ```
 
@@ -32,7 +32,7 @@ Secondly, I used the `select()` function to get rid of the **litter size** and *
 
 I also changed the names of the columns to make them easier to reference using base R functions.
 
-``` R
+``` r
 m <- m |> select(-"litter size", -"refs")
 #also renaming the variables so I don't lose it
 names(m)[names(m) == 'mass(g)'] <- 'mass'
@@ -49,7 +49,7 @@ names(m)[names(m) == 'litters/year'] <- 'LPY'
 
 Thirdly, I added in new variables that were the log-transformed versions of **Mass**, **Gestation, Newborn Mass, Weaning, Mass at End of Weaning, AFR, Maximum Lifespan,** and **Litters per year**. This way the data is normalized for visualizing and model development used for later work.
 
-``` R
+``` r
 m <- m |> 
   mutate(logMass = log(mass),
   logGest = log(gestation),
@@ -66,7 +66,7 @@ m <- m |>
 
 Fourthly, I needed to create models compare the logged **Mass** variable against logged **Gestation time, Weaning, Weaning Mass,** and **Max Lifespan**. Each linear model was then used to get the residuals and add them to the data frame.
 
-``` R
+``` r
 ##age
 #mass by gestation
 md1 <- lm(logGest ~ logMass, data = m, na.action = na.exclude)
@@ -84,7 +84,7 @@ m <- m |> mutate(resMax_Life = residuals(md4))
 
 I then repeated that process with the logged **Mass** variable against logged **Newborn mass** and **Mass at End of Weaning**. The residuals were also added to the data frame
 
-``` R
+``` r
 ##mass
 #mass by newborn
 md5 <- lm(logNBmass ~ logMass, data = m, na.action = na.exclude)
@@ -102,9 +102,9 @@ Once the residuals have been added to the data frame I can plot the residuals fo
 
 ![](step5.1)
 
-This plot suggests that the mammalian orders with the longest residual maximum lifespan are *Primates*, *Scandentia*, and *Xenarthra.* These orders have the highest interquartile ranges and significantly higher means than other groups. Although *Carnivora* has significant tails.
+This plot suggests that the mammalian orders with the longest residual maximum lifespan are *Primates*, *Scandentia*, and *Xenarthra.* These orders have the highest interquartile ranges and significantly higher medians than other groups. Although *Carnivora* has significant tails.
 
-``` R
+``` r
 (p1 <- ggplot(data = m, mapping = aes(x=order, y=resMax_Life)) +
   geom_boxplot())
 ##plot indicates that primates, scandentia, and xenarthra have the highest residual lifespan
@@ -114,9 +114,9 @@ This plot suggests that the mammalian orders with the longest residual maximum l
 
 ![](step5.2)
 
-This plot is significantly more even, suggesting that each mammalian order has roughly similar residual mass at birth. *Macroscelidae* has a high mean but a small interquartile range. Other orders, like *Cetacea,* have significant tails (which makes sense since those are whales).
+This plot is significantly more even, suggesting that each mammalian order has roughly similar residual mass at birth. *Macroscelidae* has a high median but a small interquartile range. Other orders, like *Cetacea,* have significant tails (which makes sense since those are whales).
 
-``` R
+``` r
 (p2 <- ggplot(data = m, mapping = aes(x=order, y=resNBmass)) +
     geom_boxplot())
 ##plot is a lot more even but macroscelidae looks to be the highest on average
@@ -129,7 +129,7 @@ This plot is significantly more even, suggesting that each mammalian order has r
 
 The final plot shows more difference in the mass of various mammalian orders when they finish weaning. *Perissodactyla* has the highest interquartile range with *Carnivora, Cetacea, Primates,* and *Lagamorpha* as significant runner-ups with large tails and high interquartile ranges.
 
-``` R
+``` r
 (p3 <- ggplot(data = m, mapping = aes(x=order, y=resWeanMass)) +
     geom_boxplot())
 ##plot suggests that perissodactyla is the beefiest at weaning age
@@ -142,11 +142,11 @@ Using the `dredge()` function to get the delta AICc scores, I was able to compar
 
 Beforehand, I did need to sort out any cells that had N/A in the comparative variables. I repeated this process individually to create new subsetted data frames by removing N/As for the predictor variables.
 
-``` R
+``` r
 m <- m |> drop_na(logGest, logNBmass, logWeaning, logWeanMass, logLPY, logMass)
 ```
 
-### *Maximum Lifespan* 
+### *Maximum Lifespan*
 
 Creating a full model with the `lm()` function comparing **logged Maximum Lifespan** with **logged Gestation, Newborn Mass, Weaning, Wean Mass, Mass,** and **Litters per Year**. The `dredge()` function then created the `mods1` object that produced a full list of all possible combinations of variables.
 
@@ -158,9 +158,9 @@ The most successful model, with a delta AICc score of 0.00 is model 24 which com
 
 -   *Model 64* = logMaxLife \~ logGest + logNBmass + logWeaning + logLPY + logMass + logWeanMass
 
--   *Model 52 =* logMaxLife \~ logGest + logWeaning + logLPY  + logWeanMass
+-   *Model 52 =* logMaxLife \~ logGest + logWeaning + logLPY + logWeanMass
 
-``` R
+``` r
 #testing max.life
 m2 <- m |> drop_na(logMaxLife)
 maxfull <- lm(data = m2, logMaxLife ~ logGest + logNBmass + logWeaning + logWeanMass + logLPY + logMass, na.action = "na.fail")
@@ -173,13 +173,13 @@ I then plotted the model-averaged coefficients and the confidence intervals that
 
 ![](step6.1)
 
-``` R
+``` r
 max.avg <- summary(model.avg(mods1, subset = delta <= 4, fit = TRUE))
 confint(max.avg)
 plot(max.avg)
 ```
 
-### *Age at First Reproduction* 
+### *Age at First Reproduction*
 
 Creating a full model with the `lm()` function comparing **logged Age at First Reproduction** with **logged Gestation, Newborn Mass, Weaning, Wean Mass, Mass,** and **Litters per Year**. The `dredge()` function then created the `mods2` object that produced a full list of all possible combinations of variables.
 
@@ -197,7 +197,7 @@ The most successful model, with a delta AICc score of 0.00 is model 24 which com
 
 -   *Model 64* = logAFR \~ logGest + logNBmass + logWeaning + logLPY + logMass + logWeanMass
 
-``` R
+``` r
 m3 <- m |> drop_na(logAFR)
 afrfull <- lm(data = m3, logAFR ~ logGest + logNBmass + logWeaning + logWeanMass + logLPY + logMass, na.action = "na.fail")
 (mods2 <- dredge(afrfull)) 
@@ -216,7 +216,7 @@ I then plotted the model-averaged coefficients and the confidence intervals that
 
 ![](step6.2)
 
-``` R
+``` r
 afr.avg <- summary(model.avg(mods2, subset = delta <= 4, fit = TRUE))
 confint(afr.avg)
 plot(afr.avg)
